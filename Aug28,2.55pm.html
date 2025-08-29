@@ -1,0 +1,411 @@
+{%- comment -%}
+Slim bundle builder — desktop list scrolls + floating green “Scroll for more scents” sticker (over list, hides at bottom)
+{%- endcomment -%}
+
+{%- assign TR_ID = 'trwidget' -%}
+
+{%- assign base_unit_price = 93.00 -%} 
+{%- assign discount_2 = 5 -%}
+{%- assign discount_3 = 10 -%}
+{%- assign discount_4 = 15 -%}
+{%- assign heading_text = 'Pick Your Scents:' -%}
+{%- assign add_label = 'Add +' -%}
+{%- assign add_to_cart_text = 'Add Bundle to Cart' -%}
+
+{%- assign scent_collection = collections['frontpage'] -%}
+{%- assign text_color    = '#434D10' -%}
+{%- assign subtext_color = '#6a6a6a' -%}
+{%- assign accent_color  = '#2f4f2f' -%}
+{%- assign accent_text   = '#ffffff' -%}
+{%- assign soft_bg       = '#f3f3f1' -%}
+{%- assign card_bg       = '#fbfbfa' -%}
+{%- assign border_color  = '#e4e4e0' -%}
+
+<style>
+/* ==========================================================
+   Core styles
+   ========================================================== */
+.ai-bundle-{{ TR_ID }}{
+  /* ONE source of truth for control sizing */
+  --ctrl-h: 35px;       /* height for Add pill AND ± circles */
+  --ctrl-fs: 14px;      /* font size for labels/symbols */
+  --ctrl-pad-x: 12px;   /* Add pill horizontal padding */
+  --ctrl-gap: 0px;      /* space between − number + */
+  --action-w: 100px;    /* width of action column (mobile & desktop) */
+
+  max-width:760px; margin:8px auto 0; font-family:inherit; color:{{ text_color }};
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Force left alignment for card text on all breakpoints */
+.ai-bundle-{{ TR_ID }} .ai-bundle__item-{{ TR_ID }} > div:nth-of-type(2),
+.ai-bundle-{{ TR_ID }} .ai-bundle__title-{{ TR_ID }},
+.ai-bundle-{{ TR_ID }} .ai-bundle__desc-{{ TR_ID }}{ text-align:left !important; }
+
+.ai-bundle__h-{{ TR_ID }}{ font-weight:800; font-size:20px; margin:0 0 8px 2px; }
+
+/* ===== Tier bar ===== */
+.ai-bundle__tiers-{{ TR_ID }}{
+  position:relative; background: {{ soft_bg }}; border:1px solid {{ border_color }};
+  border-radius:12px; padding:14px 12px; margin:0 0 16px;
+}
+.ai-bundle__labels-{{ TR_ID }}{ display:flex; justify-content:space-between; font-weight:800; font-size:15px; margin-bottom:6px; }
+.ai-bundle__trackwrap-{{ TR_ID }}{ position:relative; height:24px; }
+.ai-bundle__track-{{ TR_ID }}{ position:absolute; left:8%; right:8%; top:50%; height:4px; background:#e6e6e6; border-radius:999px; transform:translateY(-50%); }
+.ai-bundle__fill-{{ TR_ID }}{ position:absolute; left:8%; top:50%; height:4px; width:0%; background:{{ accent_color }}; border-radius:999px; transform:translateY(-50%); transition:width .25s ease; }
+.ai-bundle__tick-{{ TR_ID }}{ position:absolute; top:50%; width:16px; height:16px; border-radius:50%; transform:translate(-50%,-50%); background:#e6e6e6; box-shadow: inset 0 0 0 4px #fff, 0 0 0 1px rgba(0,0,0,.06); }
+.ai-bundle__tick-{{ TR_ID }}.is-active{ background:{{ accent_color }}; box-shadow: inset 0 0 0 3px rgba(255,255,255,.25), 0 0 0 1px rgba(0,0,0,.06); }
+.ai-bundle__each-{{ TR_ID }}{ display:flex; justify-content:space-between; margin-top:6px; color:{{ subtext_color }}; font-weight:700; font-size:12px; }
+.ai-bundle__bestdeal-{{ TR_ID }}{ position:absolute; top:-14px; right:-14px; background:#b83434; color:#fff; font-weight:900; font-size:12px; padding:5px 12px; border-radius:5px; transform:rotate(10deg); pointer-events:none; box-shadow:0 4px 10px rgba(0,0,0,.15); }
+
+/* ===== Scents ===== */
+.ai-bundle__heading-{{ TR_ID }}{ text-align:center; margin:10px 0 12px; font-weight:800; font-size:12px; }
+.ai-bundle__listwrap-{{ TR_ID }}{ position:relative; }
+.ai-bundle__list-{{ TR_ID }}{ display:grid; gap:10px; }
+
+@media (min-width: 1024px){
+  .ai-bundle__list-{{ TR_ID }}{
+    max-height:520px; overflow-y:auto; padding-right:6px;
+  }
+  .ai-bundle__list-{{ TR_ID }}::-webkit-scrollbar{ width:8px; }
+  .ai-bundle__list-{{ TR_ID }}::-webkit-scrollbar-track{ background: {{ soft_bg }}; border-radius:4px; }
+  .ai-bundle__list-{{ TR_ID }}::-webkit-scrollbar-thumb{ background: {{ accent_color }}; border-radius:4px; }
+}
+
+/* Floating scroll hint (desktop only) */
+.ai-bundle__scrollhint-{{ TR_ID }}{ display:none; }
+@media (min-width: 1024px){
+  .ai-bundle__scrollhint-{{ TR_ID }}{
+    display:flex; align-items:center; gap:8px; position:absolute; left:50%; bottom:12px; transform:translateX(-50%); z-index:5;
+    background: {{ accent_color }}; color:#fff; font-size:12px; font-weight:800; padding:8px 12px; border-radius:999px; box-shadow:0 6px 16px rgba(0,0,0,.18);
+    pointer-events:none; opacity:.95; transition:opacity .2s ease, transform .2s ease; width:max-content; text-align:center;
+  }
+  .ai-bundle__scrollhint-{{ TR_ID }}.is-hidden{ opacity:0; transform:translate(-50%,6px); }
+}
+
+/* ===== Card ===== */
+.ai-bundle__item-{{ TR_ID }}{
+  display:grid; grid-template-columns:56px 1fr var(--action-w); /* fixed action column */
+  gap:12px; align-items:center;
+  background:{{ card_bg }}; border:1px solid {{ border_color }}; border-radius:12px; padding:12px;
+}
+.ai-bundle__media-{{ TR_ID }}{ width:56px; height:56px; border-radius:10px; overflow:hidden; background:#f1f1f1; }
+.ai-bundle__media-{{ TR_ID }} img{ width:100%; height:100%; object-fit:cover; }
+.ai-bundle__title-{{ TR_ID }}{ margin:0 0 2px; font-size:15px; font-weight:800; }
+.ai-bundle__desc-{{ TR_ID }}{ margin:0; font-size:12px; color:{{ subtext_color }}; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+/* ===== Actions (UNIFIED SIZING) ===== */
+.ai-bundle__actions-{{ TR_ID }}{ display:flex; align-items:center; justify-content:flex-end; width:100%; }
+
+/* Normalize native button metrics so heights match exactly */
+.ai-bundle-{{ TR_ID }} .ai-bundle__add-{{ TR_ID }},
+.ai-bundle-{{ TR_ID }} .ai-bundle__stepbtn-{{ TR_ID }}{
+  -webkit-appearance:none; appearance:none;
+  margin:0; border:0; box-sizing:border-box;
+  height:var(--ctrl-h);
+  font-size:var(--ctrl-fs); font-weight:800;
+}
+
+/* Add button fills the action track and matches ± height */
+.ai-bundle__add-{{ TR_ID }}{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:100%; padding-block:0; padding-inline:var(--ctrl-pad-x);
+  line-height:var(--ctrl-h);                 /* hairline fix */
+  background:{{ accent_color }}; color:{{ accent_text }};
+  border-radius:calc(var(--ctrl-h)/2); cursor:pointer;
+  transition:transform .12s ease;
+}
+.ai-bundle__add-{{ TR_ID }}:hover{ transform:translateY(-1px); }
+
+/* Stepper fills the same track and uses the same height */
+.ai-bundle__stepper-{{ TR_ID }}{
+  width:100%; box-sizing:border-box;
+  display:grid; grid-template-columns:var(--ctrl-h) 1fr var(--ctrl-h);
+  align-items:center; column-gap:var(--ctrl-gap);
+  padding:0; background:transparent; border:none; border-radius:999px;
+}
+.ai-bundle__stepbtn-{{ TR_ID }}{
+  width:var(--ctrl-h); height:var(--ctrl-h);
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%; background:{{ accent_color }}; color:#fff;
+  line-height:1; cursor:pointer; user-select:none;
+}
+.ai-bundle__qtynum-{{ TR_ID }}{
+  text-align:center; font-weight:800; font-size:var(--ctrl-fs); color:{{ text_color }};
+  line-height:var(--ctrl-h); min-width:28px;
+}
+
+/* ===== Summary + CTA ===== */
+.ai-bundle__summary-{{ TR_ID }}{ margin-top:16px; padding:16px; background:{{ soft_bg }}; border:1px solid {{ border_color }}; border-radius:14px; text-align:center; }
+.ai-bundle__row-{{ TR_ID }}{ margin:4px 0; }
+.ai-bundle__row-{{ TR_ID }} .strong{ font-weight:900; color:{{ accent_color }}; }
+.ai-bundle__reward-{{ TR_ID }}{ display:none; margin:8px auto 6px; padding:8px 14px; width:fit-content; background:#e9f4ec; color:{{ accent_color }}; border:1px solid {{ accent_color }}; border-radius:999px; font-size:14px; font-weight:800; }
+.ai-bundle__cta-{{ TR_ID }}{
+  margin-top:10px; width:100%; max-width:420px; padding:16px 22px;
+  background:{{ accent_color }}; color:#fff; border:none; border-radius:28px;
+  font-size:18px; font-weight:900; cursor:pointer; display:inline-block;
+}
+.ai-bundle__cta-{{ TR_ID }}:hover{ background:#274427; }
+.ai-bundle__cta-{{ TR_ID }}:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* Keep focus ring */
+.ai-bundle-{{ TR_ID }} button:focus-visible{ outline:2px solid rgba(47,79,47,.45); outline-offset:2px; box-shadow:none; }
+
+/* Ensure [hidden] REALLY hides */
+.ai-bundle-{{ TR_ID }} [hidden]{ display:none !important; }
+
+/* ========= Mobile: sticky summary ========= */
+@media (max-width: 1023px){
+  .ai-bundle-{{ TR_ID }}{ padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .ai-bundle__summary-{{ TR_ID }}{
+    position: sticky; bottom: 0; z-index: 50;
+    border-top-left-radius: 14px; border-top-right-radius: 14px;
+    border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    box-shadow: 0 -8px 18px rgba(0,0,0,.08);
+    background: {{ soft_bg }};
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    margin-bottom: 0;
+  }
+}
+</style>
+
+<div class="ai-bundle-{{ TR_ID }}">
+  <div class="ai-bundle__h-{{ TR_ID }}">{{ heading_text }}</div>
+
+  <!-- Slim tiers -->
+  <div class="ai-bundle__tiers-{{ TR_ID }}">
+    <div class="ai-bundle__labels-{{ TR_ID }}">
+      <span>1 candle</span><span>2 candles</span><span>3 candles</span><span>4+ candles</span>
+    </div>
+    <div class="ai-bundle__trackwrap-{{ TR_ID }}">
+      <div class="ai-bundle__track-{{ TR_ID }}"></div>
+      <div class="ai-bundle__fill-{{ TR_ID }}"></div>
+      <div class="ai-bundle__tick-{{ TR_ID }}" style="left:8%;"  data-step="1"></div>
+      <div class="ai-bundle__tick-{{ TR_ID }}" style="left:34%;" data-step="2"></div>
+      <div class="ai-bundle__tick-{{ TR_ID }}" style="left:60%;" data-step="3"></div>
+      <div class="ai-bundle__tick-{{ TR_ID }}" style="left:92%;" data-step="4"></div>
+    </div>
+    <div class="ai-bundle__each-{{ TR_ID }}">
+      <span data-per="1"></span><span data-per="2"></span><span data-per="3"></span><span data-per="4"></span>
+    </div>
+    <div class="ai-bundle__bestdeal-{{ TR_ID }}">BEST DEAL</div>
+  </div>
+
+  <!-- Scents (wrapped so sticker can overlay) -->
+  <div class="ai-bundle__listwrap-{{ TR_ID }}">
+    <div class="ai-bundle__list-{{ TR_ID }}">
+      {% if scent_collection and scent_collection.products_count > 0 %}
+        {% for product in scent_collection.products limit: 20 %}
+          {% assign v = product.selected_or_first_available_variant %}
+          <div class="ai-bundle__item-{{ TR_ID }}" data-variant-id="{{ v.id }}" data-price="{{ v.price }}" data-qty="0">
+            <div class="ai-bundle__media-{{ TR_ID }}">
+              {% if product.featured_image %}
+                <img src="{{ product.featured_image | image_url: width: 120 }}" alt="{{ product.title }}" loading="lazy" width="120" height="120">
+              {% endif %}
+            </div>
+            <div>
+              <div class="ai-bundle__title-{{ TR_ID }}">{{ product.title }}</div>
+              {% if product.description != blank %}
+                <p class="ai-bundle__desc-{{ TR_ID }}">{{ product.description | strip_html | truncate: 100 }}</p>
+              {% endif %}
+            </div>
+
+            <div class="ai-bundle__actions-{{ TR_ID }}">
+              <button class="ai-bundle__add-{{ TR_ID }}" type="button">{{ add_label }}</button>
+              <div class="ai-bundle__stepper-{{ TR_ID }}" hidden aria-hidden="true">
+                <button class="ai-bundle__stepbtn-{{ TR_ID }}" type="button" data-action="decrease" aria-label="Decrease">−</button>
+                <span class="ai-bundle__qtynum-{{ TR_ID }}">1</span>
+                <button class="ai-bundle__stepbtn-{{ TR_ID }}" type="button" data-action="increase" aria-label="Increase">+</button>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div>No scents found. Update <code>scent_collection</code> in this block.</div>
+      {% endif %}
+    </div>
+
+    <!-- Floating scroll hint (desktop only) -->
+    <div class="ai-bundle__scrollhint-{{ TR_ID }}" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" width="16" height="16" aria-hidden="true" style="margin-right:6px;">
+        <path d="M12 5v14m0 0l-4-4m4 4l4-4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Scroll for more scents
+    </div>
+  </div>
+
+  <!-- Summary / CTA -->
+  <div class="ai-bundle__summary-{{ TR_ID }}">
+    <div class="ai-bundle__row-{{ TR_ID }}">
+      Original: <span class="orig-{{ TR_ID }}">$0.00</span> •
+      <span class="strong">Total: <span class="final-{{ TR_ID }}">$0.00</span></span> •
+      <span class="savewrap-{{ TR_ID }}" style="display:none;">You save <span class="save-{{ TR_ID }}">$0.00</span></span>
+    </div>
+    <div class="ai-bundle__reward-{{ TR_ID }}"></div>
+    <button class="ai-bundle__cta-{{ TR_ID }}" disabled>{{ add_to_cart_text }}</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ns='{{ TR_ID }}';
+  const root=document.currentScript.previousElementSibling;
+  if(!root) return;
+
+  const money=(c)=>new Intl.NumberFormat('en-CA',{style:'currency',currency:'{{ shop.currency }}'}).format((c||0)/100);
+
+  /* Tier bits */
+  const fill=root.querySelector('.ai-bundle__fill-'+ns);
+  const ticks=root.querySelectorAll('.ai-bundle__tick-'+ns);
+  const perEls={1:root.querySelector('[data-per="1"]'),
+                2:root.querySelector('[data-per="2"]'),
+                3:root.querySelector('[data-per="3"]'),
+                4:root.querySelector('[data-per="4"]')};
+
+  /* Summary bits */
+  const origEl=root.querySelector('.orig-'+ns);
+  const finalEl=root.querySelector('.final-'+ns);
+  const saveWrap=root.querySelector('.savewrap-'+ns);
+  const saveEl=root.querySelector('.save-'+ns);
+  const reward=root.querySelector('.ai-bundle__reward-'+ns);
+  const cta=root.querySelector('.ai-bundle__cta-'+ns);
+  const metaErr=root.querySelector('.meta-err');
+  const metaLoad=root.querySelector('.meta-load');
+
+  /* /ea preview from base + discounts */
+  const base=Math.round(parseFloat('{{ base_unit_price }}')*100)||0;
+  const d2=(parseFloat('{{ discount_2 }}')||0)/100;
+  const d3=(parseFloat('{{ discount_3 }}')||0)/100;
+  const d4=(parseFloat('{{ discount_4 }}')||0)/100;
+  perEls[1].textContent=money(base)+'/ea';
+  perEls[2].textContent=money(Math.round(base*(1-d2)))+'/ea';
+  perEls[3].textContent=money(Math.round(base*(1-d3)))+'/ea';
+  perEls[4].textContent=money(Math.round(base*(1-d4)))+'/ea';
+
+  const rewards={
+    1:"Free Shipping",
+    2:"Free Shipping + 5% Off ",
+    3:"Free Shipping + 10% Off + Wick Cutter & Snuffer",
+    4:"Free Shipping + 15% Off + Wick Cutter & Snuffer + Silk Scarf"
+  };
+
+  const qtyMap=new Map();
+
+  /* Wire actions */
+  root.querySelectorAll('.ai-bundle__item-'+ns).forEach(row=>{
+    const addBtn=row.querySelector('.ai-bundle__add-'+ns);
+    const stepper=row.querySelector('.ai-bundle__stepper-'+ns);
+    const qtyNum=row.querySelector('.ai-bundle__qtynum-'+ns);
+    const minus=row.querySelector('.ai-bundle__stepbtn-'+ns+'[data-action="decrease"]');
+    const plus=row.querySelector('.ai-bundle__stepbtn-'+ns+'[data-action="increase"]');
+    const vid=row.getAttribute('data-variant-id');
+
+    addBtn.addEventListener('click', ()=>{
+      row.dataset.qty=1; qtyMap.set(vid,1);
+      addBtn.hidden=true; stepper.hidden=false; stepper.setAttribute('aria-hidden','false');
+      qtyNum.textContent='1'; render();
+    });
+
+    minus.addEventListener('click', ()=>{
+      let q=parseInt(row.dataset.qty||'0',10); q=Math.max(0,q-1); row.dataset.qty=q;
+      if(q===0){ qtyMap.delete(vid); stepper.hidden=true; stepper.setAttribute('aria-hidden','true'); addBtn.hidden=false; }
+      else { qtyMap.set(vid,q); qtyNum.textContent=String(q); }
+      render();
+    });
+
+    plus.addEventListener('click', ()=>{
+      let q=parseInt(row.dataset.qty||'0',10)+1; row.dataset.qty=q; qtyMap.set(vid,q); qtyNum.textContent=String(q);
+      render();
+    });
+  });
+
+  function calcTotals(){
+    let original=0,totalQty=0;
+    root.querySelectorAll('.ai-bundle__item-'+ns).forEach(row=>{
+      const vid=row.getAttribute('data-variant-id');
+      const price=parseInt(row.getAttribute('data-price'))||0;
+      const q=qtyMap.get(vid)||0;
+      if(q>0){ original+=price*q; totalQty+=q; }
+    });
+    const tier=Math.min(totalQty,4);
+    const discPct=tier===2?{{ discount_2 }}:tier===3?{{ discount_3 }}:tier>=4?{{ discount_4 }}:0;
+    const final=Math.round(original*(1-discPct/100));
+    return { original, final, save: original-final, totalQty, tier };
+  }
+
+  function render(){
+    const { original, final, save, totalQty, tier }=calcTotals();
+
+    /* progress bar */
+    const pos=[8,34,60,92];
+    const active=Math.min(totalQty,4);
+    ticks.forEach((t,i)=>t.classList.toggle('is-active', i<active));
+    const w= totalQty ? (pos[Math.min(totalQty,4)-1]-pos[0]) : 0;
+    if(fill) fill.style.width=Math.max(0,w)+'%';
+
+    /* summary */
+    origEl.textContent=money(original);
+    finalEl.textContent=money(final);
+    if(save>0){ saveWrap.style.display='inline'; saveEl.textContent=money(save); }
+    else { saveWrap.style.display='none'; }
+
+    if(totalQty>0){ reward.style.display='inline-block'; reward.textContent='✔ '+(rewards[tier]||''); }
+    else { reward.style.display='none'; reward.textContent=''; }
+
+    cta.disabled=(totalQty===0);
+    if(metaErr){ metaErr.style.display = totalQty===0 ? 'block' : 'none'; }
+    if(metaLoad){ metaLoad.style.display='none'; }
+
+    updateHint(); // keep the sticker state in sync
+  }
+
+  /* Floating scroll hint logic */
+  const list=root.querySelector('.ai-bundle__list-'+ns);
+  const hint=root.querySelector('.ai-bundle__scrollhint-'+ns);
+  const desktopMQ=window.matchMedia('(min-width: 1024px)');
+
+  function updateHint(){
+    if(!list||!hint){ return; }
+    if(!desktopMQ.matches){ hint.style.display='none'; return; }
+
+    const canScroll=list.scrollHeight > list.clientHeight + 2;
+    if(!canScroll){ hint.style.display='none'; return; }
+    hint.style.display='flex';
+
+    const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 4;
+    hint.classList.toggle('is-hidden', atBottom);
+  }
+
+  if(list&&hint){
+    list.addEventListener('scroll', updateHint, {passive:true});
+    window.addEventListener('resize', updateHint);
+    if(desktopMQ.addEventListener){ desktopMQ.addEventListener('change', updateHint); }
+    else { desktopMQ.addListener(updateHint); }
+    updateHint();
+  }
+
+  /* Add to cart */
+  cta.addEventListener('click', async ()=>{
+    if(cta.disabled) return;
+    if(metaErr) metaErr.style.display='none';
+    if(metaLoad) metaLoad.style.display='block';
+    cta.disabled=true;
+    try{
+      const items=[]; qtyMap.forEach((q,vid)=>{ if(q>0) items.push({ id: vid, quantity: q }); });
+      const res=await fetch('/cart/add.js',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ items }) });
+      if(!res.ok) throw new Error('Add failed');
+
+      const { tier }=calcTotals();
+      let code=null; if(tier===2) code='BUNDLE2'; if(tier===3) code='BUNDLE3'; if(tier>=4) code='BUNDLE4';
+      window.location.href = code ? `/discount/${encodeURIComponent(code)}?redirect=/cart` : '/cart';
+    }catch(e){
+      console.error(e);
+      if(metaLoad) metaLoad.style.display='none';
+      if(metaErr){ metaErr.textContent='Something went wrong. Please try again.'; metaErr.style.display='block'; }
+      cta.disabled=false;
+    }
+  });
+
+  render();
+})();
+</script>
